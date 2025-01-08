@@ -11,7 +11,7 @@ export default function Home() {
   const [fieldAnnotation, setFieldAnnotation] = useState<string>("final"); // Track field annotation type
   const [isGenerated, setIsGenerated] = useState<boolean>(false); // Track whether Dart model is generated
 
-  const handleGenerate = () => {
+  const handleGenerate = (field = fieldAnnotation) => {
     if (!jsonInput) {
       showToast("Please provide JSON input!", "warning");
       return;
@@ -26,7 +26,7 @@ export default function Home() {
         json,
         className,
         formattedFileName,
-        fieldAnnotation
+        field
       );
 
       setDartCode(dartModel);
@@ -182,21 +182,31 @@ part '${fileName}.g.dart';`;
     oldClassName: string,
     newClassName: string
   ): string => {
-    // Replace the class name references
-    const classNameRegex = new RegExp(
-      `(class|factory|fromJson)\\s+${oldClassName}`,
+    // Replace direct class references
+    const directClassNameRegex = new RegExp(
+      `(class|factory|fromJson)\\s+${oldClassName}\\b`,
       "g"
     );
-    let updatedDartCode = dartCode.replace(classNameRegex, (match) => {
-      return match.replace(oldClassName, newClassName);
-    });
 
-    // Handle the underscore prefixed class names and methods
+    let updatedDartCode = dartCode.replace(directClassNameRegex, (match) =>
+      match.replace(oldClassName, newClassName)
+    );
+
+    // Replace references in fields and annotations
+    const fieldReferenceRegex = new RegExp(
+      `(?<!\\w)${oldClassName}(\\?|>)`,
+      "g"
+    );
+    updatedDartCode = updatedDartCode.replace(fieldReferenceRegex, (match) =>
+      match.replace(oldClassName, newClassName)
+    );
+
+    // Handle the underscore-prefixed class names and generated methods
     updatedDartCode = updatedDartCode
-      .replace(new RegExp(`_${oldClassName}`, "g"), `_${newClassName}`)
-      .replace(new RegExp(`\\$${oldClassName}`, "g"), `\$${newClassName}`)
+      .replace(new RegExp(`_${oldClassName}\\b`, "g"), `_${newClassName}`)
+      .replace(new RegExp(`\\$${oldClassName}\\b`, "g"), `\$${newClassName}`)
       .replace(
-        new RegExp(`\\$${oldClassName}FromJson`, "g"),
+        new RegExp(`\\$${oldClassName}FromJson\\b`, "g"),
         `\$${newClassName}FromJson`
       );
 
@@ -226,7 +236,7 @@ part '${fileName}.g.dart';`;
           <div className="flex items-center justify-end ">
             {/* Generate Dart Code Button */}
             <button
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md"
             >
               Generate Dart Code
@@ -279,7 +289,10 @@ part '${fileName}.g.dart';`;
                   </label>
                   <select
                     value={fieldAnnotation}
-                    onChange={(e) => setFieldAnnotation(e.target.value)}
+                    onChange={(e) => {
+                      handleGenerate(e.target.value);
+                      setFieldAnnotation(e.target.value);
+                    }}
                     className="w-full px-2 h-10 border bg-gray-700  border-gray-300 rounded-md"
                   >
                     <option value="final">final optional</option>

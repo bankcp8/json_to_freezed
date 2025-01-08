@@ -295,6 +295,7 @@ part '${fileName}.g.dart';`;
                 className="w-full p-2 border border-gray-300 rounded-md mt-4 flex-1 bg-gray-700"
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
+                spellCheck={false}
               ></textarea>
             </div>
 
